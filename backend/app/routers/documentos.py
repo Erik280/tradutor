@@ -20,7 +20,7 @@ from typing import List, Optional
 
 from fastapi import (
     APIRouter, BackgroundTasks, Depends, File, Form,
-    HTTPException, Query, UploadFile, status
+    HTTPException, Query, UploadFile, status, Request
 )
 from fastapi.responses import Response, StreamingResponse
 
@@ -41,6 +41,9 @@ MAX_FILE_MB = 100
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def get_token(request: Request) -> str:
+    return request.headers.get("Authorization", "")
 
 def _get_empresa_id_from_token(authorization: str) -> str:
     """
@@ -85,7 +88,7 @@ async def upload_documento(
     source_language: str = Form(default="de"),
     target_language: str = Form(default="pt"),
     model: str = Form(default="gpt-4o-mini"),
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     """
     Recebe o PDF, faz upload para o Supabase Storage e dispara
@@ -156,7 +159,7 @@ async def listar_documentos(
     empresa_id_override: Optional[str] = Query(
         None, description="Apenas super_admin pode filtrar por empresa"
     ),
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     empresa_id = _get_empresa_id_from_token(authorization)
@@ -187,7 +190,7 @@ async def listar_documentos(
 @router.get("/{documento_id}", summary="Detalhes e progresso do documento")
 async def detalhe_documento(
     documento_id: str,
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     _get_empresa_id_from_token(authorization)  # valida token
@@ -208,7 +211,7 @@ async def detalhe_documento(
 async def listar_chunks(
     documento_id: str,
     pagina: int = Query(1, ge=1),
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     _get_empresa_id_from_token(authorization)
@@ -233,7 +236,7 @@ async def revisar_chunk(
     documento_id: str,
     chunk_id: str,
     body: ChunkRevisaoUpdate,
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     _get_empresa_id_from_token(authorization)
@@ -254,7 +257,7 @@ async def revisar_chunk(
 async def exportar_documento(
     documento_id: str,
     body: ExportRequest,
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     _get_empresa_id_from_token(authorization)
@@ -311,7 +314,7 @@ async def exportar_documento(
 
 @glossario_router.get("", summary="Listar termos do glossário da empresa")
 async def listar_glossario(
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     empresa_id = _get_empresa_id_from_token(authorization)
@@ -327,7 +330,7 @@ async def listar_glossario(
 @glossario_router.post("", status_code=201, summary="Adicionar termo ao glossário")
 async def adicionar_termo(
     body: GlossarioCreate,
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     empresa_id = _get_empresa_id_from_token(authorization)
@@ -346,7 +349,7 @@ async def adicionar_termo(
 @glossario_router.delete("/{termo_id}", status_code=204, summary="Remover termo")
 async def remover_termo(
     termo_id: str,
-    authorization: str = Depends(lambda req: req.headers.get("Authorization", "")),
+    authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
     empresa_id = _get_empresa_id_from_token(authorization)
