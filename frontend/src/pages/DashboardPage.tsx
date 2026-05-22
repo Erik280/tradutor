@@ -84,19 +84,27 @@ export default function DashboardPage() {
     carregarDocumentos();
   }, [empresaSel]);
 
-  async function carregarDocumentos() {
-    setLoading(true);
+  async function carregarDocumentos(background = false) {
+    if (!background) setLoading(true);
     try {
       const docs = await api.listarDocumentos(empresaSel || undefined);
       setDocumentos(docs);
     } catch (e: any) {
       // API pode estar fora durante o primeiro deploy — não exibe erro agressivo
       console.warn("[Dashboard] API indisponível:", e?.message);
-      setDocumentos([]);
+      if (!background) setDocumentos([]);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }
+
+  // Auto-refresh (polling) a cada 5 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      carregarDocumentos(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [empresaSel]);
 
   // ── Upload ────────────────────────────────────────────────────────────────
   async function handleUpload(file: File) {

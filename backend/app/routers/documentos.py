@@ -266,7 +266,10 @@ async def exportar_documento(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    _get_empresa_id_from_token(authorization)
+    try:
+        _get_user_and_empresa_from_token(authorization)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado.")
 
     # Buscar documento
     doc_res = sb.table("documents").select("*").eq("id", documento_id).single().execute()
