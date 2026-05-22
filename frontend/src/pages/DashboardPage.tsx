@@ -232,7 +232,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-foreground">Manuais</h2>
           <button
-            onClick={carregarDocumentos}
+            onClick={() => carregarDocumentos(false)}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
