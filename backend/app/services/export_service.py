@@ -65,12 +65,20 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
             # 1. Desenhar retângulo branco opaco para cobrir o texto original
             page.draw_rect(rect, color=(1, 1, 1), fill=(1, 1, 1))
 
+            # PyMuPDF Base-14 fonts (like Helvetica) only support Latin-1.
+            # We must sanitize common Unicode typography to ASCII.
+            texto_seguro = texto.replace("\u2013", "-").replace("\u2014", "--")
+            texto_seguro = texto_seguro.replace("\u2018", "'").replace("\u2019", "'")
+            texto_seguro = texto_seguro.replace("\u201c", '"').replace("\u201d", '"')
+            texto_seguro = texto_seguro.replace("\u2026", "...")
+            texto_seguro = texto_seguro.encode("latin-1", errors="replace").decode("latin-1")
+
             # 2. Inserir o texto traduzido na mesma posição
             # Adicionar texto com auto-wrap dentro do rect
             try:
                 page.insert_textbox(
                     rect,
-                    texto,
+                    texto_seguro,
                     fontsize=font_size,
                     fontname="helv",       # Helvetica (embutida no PyMuPDF)
                     color=(0, 0, 0),
@@ -81,7 +89,7 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
                 # Fallback: inserir texto simples no canto superior do rect
                 page.insert_text(
                     (rect.x0, rect.y0 + font_size),
-                    texto[:200],  # trunca para não quebrar
+                    texto_seguro[:200],  # trunca para não quebrar
                     fontsize=font_size,
                     color=(0, 0, 0),
                 )
