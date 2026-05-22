@@ -45,10 +45,9 @@ MAX_FILE_MB = 100
 def get_token(request: Request) -> str:
     return request.headers.get("Authorization", "")
 
-def _get_empresa_id_from_token(authorization: str) -> str:
+def _get_user_and_empresa_from_token(authorization: str) -> tuple[str, str]:
     """
-    Valida o JWT do Supabase e retorna o empresa_id do usuário.
-    Em produção use supabase.auth.get_user(token).
+    Valida o JWT do Supabase e retorna (empresa_id, user_id).
     """
     sb = get_supabase()
     token = authorization.replace("Bearer ", "")
@@ -66,7 +65,7 @@ def _get_empresa_id_from_token(authorization: str) -> str:
 
         if not res.data:
             raise HTTPException(status_code=403, detail="Usuário sem empresa associada.")
-        return res.data[0]["company_id"]
+        return res.data[0]["company_id"], user_id
     except HTTPException:
         raise
     except Exception as exc:
@@ -106,7 +105,7 @@ async def upload_documento(
         )
 
     sb = get_supabase()
-    empresa_id = _get_empresa_id_from_token(authorization)
+    empresa_id, user_id = _get_user_and_empresa_from_token(authorization)
     documento_id = str(uuid.uuid4())
 
     # Upload para o Supabase Storage
@@ -133,6 +132,7 @@ async def upload_documento(
             "target_language": target_language,
             "status":          "uploaded",
             "versao_atual":    1,
+            "uploaded_by":     user_id,
         }).execute()
     except Exception as exc:
         logger.error(f"Erro no upload/insert: {exc}")
@@ -168,7 +168,7 @@ async def listar_documentos(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    empresa_id = _get_empresa_id_from_token(authorization)
+    empresa_id, _ = _get_user_and_empresa_from_token(authorization)
 
     # Super admin pode passar empresa_id_override
     eid = empresa_id_override or empresa_id
@@ -199,7 +199,7 @@ async def detalhe_documento(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    _get_empresa_id_from_token(authorization)  # valida token
+    _get_user_and_empresa_from_token(authorization)  # valida token
 
     res = sb.table("documents").select("*").eq("id", documento_id).single().execute()
     if not res.data:
@@ -220,7 +220,7 @@ async def listar_chunks(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    _get_empresa_id_from_token(authorization)
+    _get_user_and_empresa_from_token(authorization)
 
     res = sb.table("chunks_traducao") \
         .select("*") \
@@ -245,7 +245,7 @@ async def revisar_chunk(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    _get_empresa_id_from_token(authorization)
+    _get_user_and_empresa_from_token(authorization)
 
     res = sb.table("chunks_traducao").update({
         "texto_final_revisado": body.texto_final_revisado,
@@ -323,7 +323,7 @@ async def listar_glossario(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    empresa_id = _get_empresa_id_from_token(authorization)
+    empresa_id, _ = _get_user_and_empresa_from_token(authorization)
 
     res = sb.table("glossario") \
         .select("*") \
@@ -339,7 +339,7 @@ async def adicionar_termo(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    empresa_id = _get_empresa_id_from_token(authorization)
+    empresa_id, _ = _get_user_and_empresa_from_token(authorization)
 
     res = sb.table("glossario").insert({
         "empresa_id":   empresa_id,
@@ -358,7 +358,7 @@ async def remover_termo(
     authorization: str = Depends(get_token),
 ):
     sb = get_supabase()
-    empresa_id = _get_empresa_id_from_token(authorization)
+    empresa_id, _ = _get_user_and_empresa_from_token(authorization)
 
     sb.table("glossario") \
         .delete() \
