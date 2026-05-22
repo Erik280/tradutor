@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Eye, EyeOff, Loader2, BookOpen, Lock, Mail, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -6,6 +7,7 @@ import { cn } from "@/lib/utils";
 const SUPER_ADMIN_EMAIL = "eriklima.me@gmail.com";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState(SUPER_ADMIN_EMAIL);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -35,7 +37,9 @@ export default function LoginPage() {
 
       if (data.user) {
         setSuccess(true);
-        // Redirecionamento futuro: window.location.href = "/dashboard"
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1000);
       }
     } catch {
       setError("Erro inesperado ao autenticar. Tente novamente.");
