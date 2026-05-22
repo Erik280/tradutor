@@ -111,26 +111,30 @@ async def upload_documento(
 
     # Upload para o Supabase Storage
     storage_path = f"{empresa_id}/{documento_id}/{file.filename}"
-    sb.storage.from_("documents").upload(
-        path=storage_path,
-        file=conteudo,
-        file_options={"content-type": "application/pdf"},
-    )
+    try:
+        sb.storage.from_("documents").upload(
+            path=storage_path,
+            file=conteudo,
+            file_options={"content-type": "application/pdf"},
+        )
 
-    # Inserir registro na tabela documents
-    sb.table("documents").insert({
-        "id":              documento_id,
-        "company_id":      empresa_id,
-        "title":           file.filename,
-        "original_filename": file.filename,
-        "storage_path":    storage_path,
-        "file_size_bytes": len(conteudo),
-        "mime_type":       "application/pdf",
-        "source_language": source_language,
-        "target_language": target_language,
-        "status":          "uploaded",
-        "versao_atual":    1,
-    }).execute()
+        # Inserir registro na tabela documents
+        sb.table("documents").insert({
+            "id":              documento_id,
+            "company_id":      empresa_id,
+            "title":           file.filename,
+            "original_filename": file.filename,
+            "storage_path":    storage_path,
+            "file_size_bytes": len(conteudo),
+            "mime_type":       "application/pdf",
+            "source_language": source_language,
+            "target_language": target_language,
+            "status":          "uploaded",
+            "versao_atual":    1,
+        }).execute()
+    except Exception as exc:
+        logger.error(f"Erro no upload/insert: {exc}")
+        raise HTTPException(status_code=500, detail=f"Erro interno de storage/bd: {str(exc)}")
 
     # Disparar pipeline assíncrono em background
     openai_key = os.environ.get("OPENAI_API_KEY")
