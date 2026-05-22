@@ -1,8 +1,17 @@
 version: "3.9"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# TRADUTOR TÉCNICO — Stack Portainer
+# GitHub: https://github.com/Erik280/tradutor
+# Domínio: tradutor.transformafuturo.com.br
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
-  # ─── BACKEND — FastAPI ───────────────────────────────────────────────────────
+
+  # ─── BACKEND — FastAPI ─────────────────────────────────────────────────────
   backend:
+    image: ghcr.io/erik280/tradutor-backend:latest
+    # Para build direto sem registry, use:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -11,11 +20,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      ENVIRONMENT: ${ENVIRONMENT:-production}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://tradutor.transformafuturo.com.br}
+      SUPABASE_URL: "https://cbrwpchzozvffenduzsu.supabase.co"
+      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk3NTIsImV4cCI6MjA5NDk3NTc1Mn0.39XYA5yqlaPv19MuWcDxAxjf8E2q0lkaGzO_J0m-Gls"
+      SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTM5OTc1MiwiZXhwIjoyMDk0OTc1NzUyfQ.2Esd_waIL6RBxBUtXeEYxTZLVKNLWaaydH2auX7dSa0"
+      ENVIRONMENT: "production"
+      ALLOWED_ORIGINS: "https://tradutor.transformafuturo.com.br,http://localhost:3000"
     networks:
       - tradutor-net
     healthcheck:
@@ -23,25 +32,29 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+    labels:
+      - "com.portainer.accesscontrol.teams=tradutor"
 
-  # ─── FRONTEND — Vite / React ─────────────────────────────────────────────────
+  # ─── FRONTEND — Vite → Nginx ───────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: "https://cbrwpchzozvffenduzsu.supabase.co"
+        VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk3NTIsImV4cCI6MjA5NDk3NTc1Mn0.39XYA5yqlaPv19MuWcDxAxjf8E2q0lkaGzO_J0m-Gls"
     container_name: tradutor-frontend
     restart: unless-stopped
     ports:
       - "3000:80"
-    environment:
-      VITE_SUPABASE_URL: ${SUPABASE_URL}
-      VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - tradutor-net
+    labels:
+      - "com.portainer.accesscontrol.teams=tradutor"
 
 networks:
   tradutor-net:
