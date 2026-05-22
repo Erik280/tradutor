@@ -2,6 +2,8 @@ version: "3.9"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TRADUTOR TÉCNICO — Stack Portainer (Swarm Mode com Traefik)
+# Backend acessível em: tradutor.transformafuturo.com.br/api/v1/...
+# Frontend acessível em: tradutor.transformafuturo.com.br
 # GitHub: https://github.com/Erik280/tradutor
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -33,7 +35,9 @@ services:
           - node.role == manager
       labels:
         - "traefik.enable=1"
-        - "traefik.http.routers.tradutor_backend.rule=Host(`api.tradutor.transformafuturo.com.br`)"
+        # Rota /api/ e /health com prioridade ALTA (10) para o backend
+        - "traefik.http.routers.tradutor_backend.rule=Host(`tradutor.transformafuturo.com.br`) && (PathPrefix(`/api`) || PathPrefix(`/health`) || PathPrefix(`/docs`) || PathPrefix(`/redoc`))"
+        - "traefik.http.routers.tradutor_backend.priority=10"
         - "traefik.http.routers.tradutor_backend.entrypoints=websecure"
         - "traefik.http.routers.tradutor_backend.tls.certresolver=letsencryptresolver"
         - "traefik.http.routers.tradutor_backend.service=tradutor_backend"
@@ -55,7 +59,9 @@ services:
           - node.role == manager
       labels:
         - "traefik.enable=1"
+        # Rota padrão (tudo) com prioridade BAIXA (1) para o frontend
         - "traefik.http.routers.tradutor_frontend.rule=Host(`tradutor.transformafuturo.com.br`)"
+        - "traefik.http.routers.tradutor_frontend.priority=1"
         - "traefik.http.routers.tradutor_frontend.entrypoints=websecure"
         - "traefik.http.routers.tradutor_frontend.tls.certresolver=letsencryptresolver"
         - "traefik.http.routers.tradutor_frontend.service=tradutor_frontend"

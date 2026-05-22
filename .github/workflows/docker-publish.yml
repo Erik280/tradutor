@@ -64,4 +64,4 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=https://cbrwpchzozvffenduzsu.supabase.co
             VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk3NTIsImV4cCI6MjA5NDk3NTc1Mn0.39XYA5yqlaPv19MuWcDxAxjf8E2q0lkaGzO_J0m-Gls
-            VITE_API_URL=https://api.tradutor.transformafuturo.com.br/api/v1
+            VITE_API_URL=https://tradutor.transformafuturo.com.br/api/v1
