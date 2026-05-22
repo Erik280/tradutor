@@ -16,6 +16,7 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTM5OTc1MiwiZXhwIjoyMDk0OTc1NzUyfQ.2Esd_waIL6RBxBUtXeEYxTZLVKNLWaaydH2auX7dSa0"
       ENVIRONMENT: "production"
       ALLOWED_ORIGINS: "https://tradutor.transformafuturo.com.br,http://localhost:3000"
+      OPENAI_API_KEY: "sua-openai-api-key-aqui"
     networks:
       - network
     healthcheck:

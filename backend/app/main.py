@@ -1,17 +1,20 @@
 """
 Tradutor Técnico SaaS — FastAPI Backend
-Entry point: main.py
+Entry point: main.py — v0.2.0
 """
 
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers.documentos import router as documentos_router
+from app.routers.documentos import glossario_router
+
 # ─── App Instance ─────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Tradutor Técnico API",
     description="Backend do SaaS Multi-tenant de Tradução de Manuais Técnicos",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -31,19 +34,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ─── Routers ─────────────────────────────────────────────────────────────────
+app.include_router(documentos_router, prefix="/api/v1")
+app.include_router(glossario_router,  prefix="/api/v1")
 
-# ─── Routes ──────────────────────────────────────────────────────────────────
+
+# ─── Health ───────────────────────────────────────────────────────────────────
 @app.get("/health", tags=["Infra"])
 async def health_check():
-    """Endpoint de validação de saúde do container — usado pelo Docker healthcheck."""
     return {
         "status": "healthy",
         "service": "tradutor-backend",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "environment": os.getenv("ENVIRONMENT", "development"),
     }
 
 
 @app.get("/", tags=["Infra"])
 async def root():
-    return {"message": "Tradutor Técnico API está no ar 🚀"}
+    return {"message": "Tradutor Técnico API v0.2.0 🚀"}
