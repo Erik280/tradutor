@@ -10,6 +10,7 @@ Pipeline assíncrono:
 import asyncio
 import logging
 import uuid
+import os
 from typing import List
 
 import fitz  # PyMuPDF
