@@ -1,24 +1,15 @@
 version: "3.9"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TRADUTOR TÉCNICO — Stack Portainer
+# TRADUTOR TÉCNICO — Stack Portainer (Swarm Mode)
 # GitHub: https://github.com/Erik280/tradutor
-# Domínio: tradutor.transformafuturo.com.br
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
 
   # ─── BACKEND — FastAPI ─────────────────────────────────────────────────────
   backend:
-    image: ghcr.io/erik280/tradutor-backend:latest
-    # Para build direto sem registry, use:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: tradutor-backend
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
+    image: ghcr.io/erik280/tradutor-backend:main
     environment:
       SUPABASE_URL: "https://cbrwpchzozvffenduzsu.supabase.co"
       SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk3NTIsImV4cCI6MjA5NDk3NTc1Mn0.39XYA5yqlaPv19MuWcDxAxjf8E2q0lkaGzO_J0m-Gls"
@@ -33,28 +24,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-    labels:
-      - "com.portainer.accesscontrol.teams=tradutor"
+    deploy:
+      restart_policy:
+        condition: any
+      labels:
+        - "com.portainer.accesscontrol.teams=tradutor"
 
   # ─── FRONTEND — Vite → Nginx ───────────────────────────────────────────────
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_SUPABASE_URL: "https://cbrwpchzozvffenduzsu.supabase.co"
-        VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk3NTIsImV4cCI6MjA5NDk3NTc1Mn0.39XYA5yqlaPv19MuWcDxAxjf8E2q0lkaGzO_J0m-Gls"
-    container_name: tradutor-frontend
-    restart: unless-stopped
+    image: ghcr.io/erik280/tradutor-frontend:main
     ports:
       - "3000:80"
     depends_on:
       - backend
     networks:
       - tradutor-net
-    labels:
-      - "com.portainer.accesscontrol.teams=tradutor"
+    deploy:
+      restart_policy:
+        condition: any
+      labels:
+        - "com.portainer.accesscontrol.teams=tradutor"
 
 networks:
   tradutor-net:
-    driver: bridge
+    driver: overlay
