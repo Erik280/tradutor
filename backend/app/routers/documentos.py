@@ -288,35 +288,39 @@ async def exportar_documento(
     if not chunks:
         raise HTTPException(status_code=400, detail="Nenhum chunk traduzido encontrado.")
 
-    nome_base = doc["title"].replace(".pdf", "")
+    try:
+        nome_base = doc["title"].replace(".pdf", "")
 
-    if body.com_imagens:
-        # ── Modo: PDF Overlay ──────────────────────────────────────────────────
-        logger.info(f"[{documento_id}] Gerando PDF overlay...")
-        pdf_bytes = sb.storage.from_("documents").download(doc["storage_path"])
-        pdf_final = gerar_pdf_overlay(pdf_bytes, chunks)
+        if body.com_imagens:
+            # ── Modo: PDF Overlay ──────────────────────────────────────────────────
+            logger.info(f"[{documento_id}] Gerando PDF overlay...")
+            pdf_bytes = sb.storage.from_("documents").download(doc["storage_path"])
+            pdf_final = gerar_pdf_overlay(pdf_bytes, chunks)
 
-        return Response(
-            content=pdf_final,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition":
-                    f'attachment; filename="{nome_base}_traduzido.pdf"'
-            },
-        )
-    else:
-        # ── Modo: Markdown ────────────────────────────────────────────────────
-        logger.info(f"[{documento_id}] Gerando Markdown...")
-        md_bytes = gerar_markdown(chunks, nome_documento=nome_base)
+            return Response(
+                content=pdf_final,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition":
+                        f'attachment; filename="{nome_base}_traduzido.pdf"'
+                },
+            )
+        else:
+            # ── Modo: Markdown ────────────────────────────────────────────────────
+            logger.info(f"[{documento_id}] Gerando Markdown...")
+            md_bytes = gerar_markdown(chunks, nome_documento=nome_base)
 
-        return Response(
-            content=md_bytes,
-            media_type="text/markdown; charset=utf-8",
-            headers={
-                "Content-Disposition":
-                    f'attachment; filename="{nome_base}_traduzido.md"'
-            },
-        )
+            return Response(
+                content=md_bytes,
+                media_type="text/markdown; charset=utf-8",
+                headers={
+                    "Content-Disposition":
+                        f'attachment; filename="{nome_base}_traduzido.md"'
+                },
+            )
+    except Exception as exc:
+        logger.error(f"Erro na exportação [{documento_id}]: {exc}")
+        raise HTTPException(status_code=500, detail=f"Falha na exportação: {str(exc)}")
 
 
 # ─── GLOSSÁRIO ───────────────────────────────────────────────────────────────
