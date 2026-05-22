@@ -100,7 +100,7 @@ export default function ReviewPage() {
   }
 
   // ── Seleção de texto para sugerir glossário ───────────────────────────────
-  function handleTextSelection(originalText: string) {
+  function handleTextSelection() {
     const sel = window.getSelection()?.toString().trim();
     if (sel && sel.length > 2) {
       setAddTerm({ show: true, original: sel, traducao: "" });
@@ -200,7 +200,7 @@ export default function ReviewPage() {
                 <div
                   key={chunk.id}
                   className="bg-card border border-border rounded-xl p-4 text-sm text-foreground leading-relaxed"
-                  onMouseUp={() => handleTextSelection(chunk.texto_original)}
+                  onMouseUp={handleTextSelection}
                 >
                   <span className="text-xs text-muted-foreground block mb-2 font-mono">
                     #{chunk.chunk_index + 1} · {chunk.block_type}
