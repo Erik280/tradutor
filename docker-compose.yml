@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TRADUTOR TÉCNICO — Stack Portainer (Swarm Mode)
+# TRADUTOR TÉCNICO — Stack Portainer (Swarm Mode com Traefik)
 # GitHub: https://github.com/Erik280/tradutor
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -10,8 +10,6 @@ services:
   # ─── BACKEND — FastAPI ─────────────────────────────────────────────────────
   backend:
     image: ghcr.io/erik280/tradutor-backend:main
-    ports:
-      - "8000:8000"
     environment:
       SUPABASE_URL: "https://cbrwpchzozvffenduzsu.supabase.co"
       SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNicndwY2h6b3p2ZmZlbmR1enN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTk3NTIsImV4cCI6MjA5NDk3NTc1Mn0.39XYA5yqlaPv19MuWcDxAxjf8E2q0lkaGzO_J0m-Gls"
@@ -19,7 +17,7 @@ services:
       ENVIRONMENT: "production"
       ALLOWED_ORIGINS: "https://tradutor.transformafuturo.com.br,http://localhost:3000"
     networks:
-      - tradutor-net
+      - network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -27,26 +25,43 @@ services:
       retries: 3
       start_period: 15s
     deploy:
-      restart_policy:
-        condition: any
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       labels:
-        - "com.portainer.accesscontrol.teams=tradutor"
+        - "traefik.enable=1"
+        - "traefik.http.routers.tradutor_backend.rule=Host(`api.tradutor.transformafuturo.com.br`)"
+        - "traefik.http.routers.tradutor_backend.entrypoints=websecure"
+        - "traefik.http.routers.tradutor_backend.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.tradutor_backend.service=tradutor_backend"
+        - "traefik.http.services.tradutor_backend.loadbalancer.server.port=8000"
+        - "traefik.http.services.tradutor_backend.loadbalancer.passHostHeader=true"
 
   # ─── FRONTEND — Vite → Nginx ───────────────────────────────────────────────
   frontend:
     image: ghcr.io/erik280/tradutor-frontend:main
-    ports:
-      - "3000:80"
     depends_on:
       - backend
     networks:
-      - tradutor-net
+      - network
     deploy:
-      restart_policy:
-        condition: any
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       labels:
-        - "com.portainer.accesscontrol.teams=tradutor"
+        - "traefik.enable=1"
+        - "traefik.http.routers.tradutor_frontend.rule=Host(`tradutor.transformafuturo.com.br`)"
+        - "traefik.http.routers.tradutor_frontend.entrypoints=websecure"
+        - "traefik.http.routers.tradutor_frontend.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.tradutor_frontend.service=tradutor_frontend"
+        - "traefik.http.services.tradutor_frontend.loadbalancer.server.port=80"
+        - "traefik.http.services.tradutor_frontend.loadbalancer.passHostHeader=true"
 
 networks:
-  tradutor-net:
-    driver: overlay
+  network:
+    external: true
+    name: network
