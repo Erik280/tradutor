@@ -62,12 +62,18 @@ export default function DashboardPage() {
       setIsSuperAdmin(email === SUPER_ADMIN_EMAIL);
 
       if (email === SUPER_ADMIN_EMAIL) {
-        // Super Admin: carregar lista de empresas
-        const { data: companies } = await supabase
-          .from("companies")
-          .select("id,name")
-          .order("name");
-        setEmpresas((companies ?? []).map((c: any) => ({ id: c.id, nome_comercial: c.name })));
+        // Super Admin: carregar lista de empresas (ignora erros de RLS)
+        try {
+          const { data: companies, error: compErr } = await supabase
+            .from("companies")
+            .select("id,name")
+            .order("name");
+          if (!compErr && companies) {
+            setEmpresas(companies.map((c: any) => ({ id: c.id, nome_comercial: c.name })));
+          }
+        } catch {
+          // Silencioso — o seletor de empresa simplesmente não aparece
+        }
       }
 
       await carregarDocumentos();
@@ -83,8 +89,10 @@ export default function DashboardPage() {
     try {
       const docs = await api.listarDocumentos(empresaSel || undefined);
       setDocumentos(docs);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      // API pode estar fora durante o primeiro deploy — não exibe erro agressivo
+      console.warn("[Dashboard] API indisponível:", e?.message);
+      setDocumentos([]);
     } finally {
       setLoading(false);
     }
