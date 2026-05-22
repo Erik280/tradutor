@@ -110,7 +110,9 @@ async def upload_documento(
     documento_id = str(uuid.uuid4())
 
     # Upload para o Supabase Storage
-    storage_path = f"{empresa_id}/{documento_id}/{file.filename}"
+    # Supabase Storage rejects paths with spaces or special accents ("InvalidKey" 400 error)
+    # We use the UUID as the filename in storage to guarantee a safe path.
+    storage_path = f"{empresa_id}/{documento_id}/{documento_id}.pdf"
     try:
         sb.storage.from_("documents").upload(
             path=storage_path,
