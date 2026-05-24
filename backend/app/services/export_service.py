@@ -176,7 +176,11 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict], quebra_linha_manual:
             texto_seguro = texto_seguro.encode("latin-1", errors="replace").decode("latin-1")
 
             try:
-                if quebra_linha_manual:
+                # Use global ou manual do chunk
+                chunk_quebra_manual = chunk.get("disable_word_wrap", False)
+                use_quebra = quebra_linha_manual or chunk_quebra_manual
+
+                if use_quebra:
                     _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0), quebra_linha_manual=True)
                 else:
                     rc = page.insert_textbox(

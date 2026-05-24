@@ -83,6 +83,7 @@ class ChunkOut(BaseModel):
     offset_x:             float = 0.0
     offset_y:             float = 0.0
     custom_font_size:     Optional[float] = None
+    disable_word_wrap:    bool = False
 
 class ChunkRevisaoUpdate(BaseModel):
     texto_final_revisado: str
@@ -90,6 +91,7 @@ class ChunkRevisaoUpdate(BaseModel):
     offset_x:             float = 0.0
     offset_y:             float = 0.0
     custom_font_size:     Optional[float] = None
+    disable_word_wrap:    bool = False
 
 
 # ─── Documento ───────────────────────────────────────────────────────────────

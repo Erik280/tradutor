@@ -52,7 +52,7 @@ export const api = {
     return res.json();
   },
 
-  async salvarRevisao(documentoId: string, chunkId: string, texto: string, offsetX: number = 0, offsetY: number = 0, customFontSize: number | null = null) {
+  async salvarRevisao(documentoId: string, chunkId: string, texto: string, offsetX: number = 0, offsetY: number = 0, customFontSize: number | null = null, disableWordWrap: boolean = false) {
     const headers = await getAuthHeaders();
     const res = await fetch(
       `${API_BASE}/documentos/${documentoId}/chunks/${chunkId}`,
@@ -64,7 +64,8 @@ export const api = {
           status: "revisado",
           offset_x: offsetX,
           offset_y: offsetY,
-          custom_font_size: customFontSize
+          custom_font_size: customFontSize,
+          disable_word_wrap: disableWordWrap
         }),
       }
     );

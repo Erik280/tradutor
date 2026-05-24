@@ -21,6 +21,7 @@ interface Chunk {
   offset_x?: number;
   offset_y?: number;
   custom_font_size?: number | null;
+  disable_word_wrap?: boolean;
 }
 
 interface AddTermState {
@@ -44,6 +45,7 @@ export default function ReviewPage() {
   const [offsetsX,        setOffsetsX]         = useState<Record<string, number>>({});
   const [offsetsY,        setOffsetsY]         = useState<Record<string, number>>({});
   const [customFonts,     setCustomFonts]      = useState<Record<string, number | null>>({});
+  const [disableWordWraps, setDisableWordWraps] = useState<Record<string, boolean>>({});
   const [showLayout,      setShowLayout]       = useState<Record<string, boolean>>({});
   const [showExport,      setShowExport]       = useState(false);
   const [addTerm,         setAddTerm]          = useState<AddTermState>({ show: false, original: "", traducao: "" });
@@ -70,16 +72,19 @@ export default function ReviewPage() {
       const ox: Record<string, number> = {};
       const oy: Record<string, number> = {};
       const cf: Record<string, number | null> = {};
+      const dw: Record<string, boolean> = {};
       for (const c of data) {
         edit[c.id] = c.texto_final_revisado ?? c.texto_traduzido_ia ?? "";
         ox[c.id] = c.offset_x ?? 0;
         oy[c.id] = c.offset_y ?? 0;
         cf[c.id] = c.custom_font_size ?? null;
+        dw[c.id] = c.disable_word_wrap ?? false;
       }
       setEditando(edit);
       setOffsetsX(ox);
       setOffsetsY(oy);
       setCustomFonts(cf);
+      setDisableWordWraps(dw);
     } catch (e) {
       console.error(e);
     } finally {
@@ -100,7 +105,8 @@ export default function ReviewPage() {
         editando[chunkId] ?? "",
         offsetsX[chunkId] ?? 0,
         offsetsY[chunkId] ?? 0,
-        customFonts[chunkId] ?? null
+        customFonts[chunkId] ?? null,
+        disableWordWraps[chunkId] ?? false
       );
       setSavedIds((prev) => new Set(prev).add(chunkId));
       setTimeout(() => {
@@ -269,7 +275,8 @@ export default function ReviewPage() {
                 const isEdited = editando[chunk.id] !== (chunk.texto_final_revisado ?? chunk.texto_traduzido_ia ?? "") ||
                   offsetsX[chunk.id] !== (chunk.offset_x ?? 0) ||
                   offsetsY[chunk.id] !== (chunk.offset_y ?? 0) ||
-                  customFonts[chunk.id] !== (chunk.custom_font_size ?? null);
+                  customFonts[chunk.id] !== (chunk.custom_font_size ?? null) ||
+                  disableWordWraps[chunk.id] !== (chunk.disable_word_wrap ?? false);
 
                 return (
                   <div
@@ -363,6 +370,19 @@ export default function ReviewPage() {
                             <button onClick={() => setCustomFonts(p => ({ ...p, [chunk.id]: Math.min(48, (p[chunk.id] || 10) + 1) }))} className="p-1.5 bg-accent rounded hover:brightness-95">+</button>
                             <button onClick={() => setCustomFonts(p => ({ ...p, [chunk.id]: null }))} className="text-xs text-primary hover:underline ml-2">Resetar</button>
                           </div>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 p-2 rounded transition-colors w-max">
+                            <input
+                              type="checkbox"
+                              checked={disableWordWraps[chunk.id] ?? false}
+                              onChange={(e) => setDisableWordWraps(p => ({ ...p, [chunk.id]: e.target.checked }))}
+                              className="rounded text-primary focus:ring-primary w-4 h-4"
+                            />
+                            <span className="text-xs font-medium text-foreground">
+                              Desativar quebra automática de linha
+                            </span>
+                          </label>
                         </div>
                       </div>
                     )}

@@ -253,6 +253,7 @@ async def revisar_chunk(
         "offset_x":             body.offset_x,
         "offset_y":             body.offset_y,
         "custom_font_size":     body.custom_font_size,
+        "disable_word_wrap":    body.disable_word_wrap,
     }).eq("id", chunk_id).eq("documento_id", documento_id).execute()
 
     if not res.data:
