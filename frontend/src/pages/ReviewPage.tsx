@@ -46,6 +46,7 @@ export default function ReviewPage() {
   const [showLayout,      setShowLayout]       = useState<Record<string, boolean>>({});
   const [showExport,      setShowExport]       = useState(false);
   const [addTerm,         setAddTerm]          = useState<AddTermState>({ show: false, original: "", traducao: "" });
+  const [activeChunkId,   setActiveChunkId]    = useState<string | null>(null);
 
   // ── Carregar documento e chunks ───────────────────────────────────────────
   useEffect(() => {
@@ -127,6 +128,15 @@ export default function ReviewPage() {
     const sel = window.getSelection()?.toString().trim();
     if (sel && sel.length > 2) {
       setAddTerm({ show: true, original: sel, traducao: "" });
+    }
+  }
+
+  // ── Foco sincronizado ─────────────────────────────────────────────────────
+  function handleFocusChunk(id: string) {
+    setActiveChunkId(id);
+    const el = document.getElementById(`original-chunk-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
@@ -221,8 +231,14 @@ export default function ReviewPage() {
             <div className="p-4 space-y-3">
               {chunks.map((chunk) => (
                 <div
+                  id={`original-chunk-${chunk.id}`}
                   key={chunk.id}
-                  className="bg-card border border-border rounded-xl p-4 text-sm text-foreground leading-relaxed"
+                  className={cn(
+                    "border rounded-xl p-4 text-sm text-foreground leading-relaxed transition-all duration-500",
+                    activeChunkId === chunk.id
+                      ? "bg-card border-primary ring-4 ring-primary/20 shadow-xl"
+                      : "bg-card border-border"
+                  )}
                   onMouseUp={handleTextSelection}
                 >
                   <span className="text-xs text-muted-foreground block mb-2 font-mono">
@@ -309,6 +325,7 @@ export default function ReviewPage() {
                     <textarea
                       id={`textarea-chunk-${chunk.id}`}
                       value={editando[chunk.id] ?? ""}
+                      onFocus={() => handleFocusChunk(chunk.id)}
                       onChange={(e) =>
                         setEditando((prev) => ({ ...prev, [chunk.id]: e.target.value }))
                       }
