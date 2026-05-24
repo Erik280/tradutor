@@ -23,32 +23,83 @@ logger = logging.getLogger(__name__)
 
 # ─── MODO 1: PDF com Overlay ──────────────────────────────────────────────────
 
-def _draw_text_wrapped(page, rect, text, fontname, fontsize, color):
+def _draw_text_wrapped(page, rect, text, fontname, original_fontsize, color):
     """
-    Desenha o texto com quebra de linha manual, ignorando a altura do retângulo.
-    Garante que o texto sempre será visível, mesmo que transborde o box original.
+    Desenha o texto com quebra de linha manual.
+    Encolhe automaticamente a fonte (até um limite) se o texto quebrado
+    não couber na altura do retângulo, evitando invasão de bordas (como em tabelas).
     """
-    y = rect.y0 + fontsize
-    for paragraph in text.split("\n"):
-        words = paragraph.split()
-        if not words:
-            y += fontsize * 1.2
+    fontsize = original_fontsize
+    min_fontsize = 6.0
+    
+    lines_to_draw = []
+    
+    while fontsize >= min_fontsize:
+        lines_to_draw = []
+        overflows_width = False
+        
+        for paragraph in text.split("\n"):
+            words = paragraph.split()
+            if not words:
+                lines_to_draw.append("")
+                continue
+                
+            current_line = []
+            for word in words:
+                test_line = " ".join(current_line + [word])
+                w = fitz.get_text_length(test_line, fontname=fontname, fontsize=fontsize)
+                if w > rect.width:
+                    if not current_line:
+                        # Palavra muito grande
+                        overflows_width = True
+                        break
+                    lines_to_draw.append(" ".join(current_line))
+                    current_line = [word]
+                else:
+                    current_line.append(word)
+            
+            if overflows_width:
+                break
+                
+            if current_line:
+                lines_to_draw.append(" ".join(current_line))
+                
+        if overflows_width:
+            fontsize -= 0.5
             continue
             
-        current_line = []
-        for word in words:
-            test_line = " ".join(current_line + [word])
-            w = fitz.get_text_length(test_line, fontname=fontname, fontsize=fontsize)
-            if w > rect.width and current_line:
-                page.insert_text((rect.x0, y), " ".join(current_line), fontsize=fontsize, fontname=fontname, color=color)
-                y += fontsize * 1.2
-                current_line = [word]
-            else:
-                current_line.append(word)
+        total_height = len(lines_to_draw) * fontsize * 1.2
+        if total_height <= rect.height:
+            break
+            
+        fontsize -= 0.5
         
-        if current_line:
-            page.insert_text((rect.x0, y), " ".join(current_line), fontsize=fontsize, fontname=fontname, color=color)
-            y += fontsize * 1.2
+    # Se ainda não couber (ou palavras gigantes), garante que temos as linhas calculadas
+    if not lines_to_draw:
+        lines_to_draw = []
+        for paragraph in text.split("\n"):
+            words = paragraph.split()
+            if not words:
+                lines_to_draw.append("")
+                continue
+            current_line = []
+            for word in words:
+                test_line = " ".join(current_line + [word])
+                w = fitz.get_text_length(test_line, fontname=fontname, fontsize=fontsize)
+                if w > rect.width and current_line:
+                    lines_to_draw.append(" ".join(current_line))
+                    current_line = [word]
+                else:
+                    current_line.append(word)
+            if current_line:
+                lines_to_draw.append(" ".join(current_line))
+
+    # Desenha o texto
+    y = rect.y0 + fontsize
+    for line in lines_to_draw:
+        if line:
+            page.insert_text((rect.x0, y), line, fontsize=fontsize, fontname=fontname, color=color)
+        y += fontsize * 1.2
 
 
 def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
@@ -72,6 +123,21 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
         page = doc[page_num - 1]  # PyMuPDF usa índice 0-based
         page_height = page.rect.height
 
+        # PASS 1: Desenhar todos os retângulos brancos primeiro.
+        # Isso impede que o retângulo de um bloco sobreponha o texto traduzido
+        # de um bloco superior que precisou de mais linhas (wrap).
+        for chunk in page_chunks:
+            coord = chunk["coordenadas"]
+            ph = coord.get("page_height", page_height)
+            x0 = coord["x0"]
+            y0_tl = ph - coord["y1"]
+            x1 = coord["x1"]
+            y1_tl = ph - coord["y0"]
+
+            rect = fitz.Rect(x0, y0_tl, x1, y1_tl)
+            page.draw_rect(rect, color=(1, 1, 1), fill=(1, 1, 1))
+
+        # PASS 2: Injetar os textos traduzidos
         for chunk in page_chunks:
             texto = chunk.get("texto_final_revisado") or chunk.get("texto_traduzido_ia", "")
             if not texto:
@@ -81,17 +147,12 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
             font_size = chunk.get("font_size") or 10.0
             font_size = max(6.0, min(font_size, 24.0))  # Clamp seguro
 
-            # Re-converter coordenadas bottom-left → top-left (PyMuPDF)
             ph = coord.get("page_height", page_height)
             x0 = coord["x0"]
-            y0_tl = ph - coord["y1"]  # topo = altura_pagina - y1 (bottom-left)
+            y0_tl = ph - coord["y1"]
             x1 = coord["x1"]
-            y1_tl = ph - coord["y0"]  # baixo = altura_pagina - y0 (bottom-left)
-
+            y1_tl = ph - coord["y0"]
             rect = fitz.Rect(x0, y0_tl, x1, y1_tl)
-
-            # 1. Desenhar retângulo branco opaco para cobrir o texto original
-            page.draw_rect(rect, color=(1, 1, 1), fill=(1, 1, 1))
 
             # PyMuPDF Base-14 fonts (like Helvetica) only support Latin-1.
             # We must sanitize common Unicode typography to ASCII.
@@ -99,25 +160,24 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
             texto_seguro = texto_seguro.replace("\u2018", "'").replace("\u2019", "'")
             texto_seguro = texto_seguro.replace("\u201c", '"').replace("\u201d", '"')
             texto_seguro = texto_seguro.replace("\u2026", "...")
+            # Sanitizar marcadores de lista
+            texto_seguro = texto_seguro.replace("•", "-").replace("·", "-").replace("■", "-").replace("▪", "-").replace("►", "-")
             texto_seguro = texto_seguro.encode("latin-1", errors="replace").decode("latin-1")
 
-            # 2. Inserir o texto traduzido na mesma posição
             try:
                 rc = page.insert_textbox(
                     rect,
                     texto_seguro,
                     fontsize=font_size,
-                    fontname="helv",       # Helvetica (embutida no PyMuPDF)
+                    fontname="helv",
                     color=(0, 0, 0),
                     align=fitz.TEXT_ALIGN_LEFT,
                 )
                 if rc < 0:
-                    # Texto não coube no box (muito longo ou box muito apertado).
-                    # PyMuPDF não desenhou nada. Usamos fallback manual que ignora altura.
+                    # Texto não coube (muito longo ou box muito apertado).
                     _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0))
             except Exception as e:
                 logger.warning(f"Falha ao inserir texto na página {page_num}: {e}")
-                # Fallback final se algo quebrar bizarramente
                 _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0))
 
     # Serializar para bytes com compressão
