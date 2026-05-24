@@ -289,6 +289,7 @@ async def exportar_documento(
         raise HTTPException(status_code=400, detail="Nenhum chunk traduzido encontrado.")
 
     try:
+        import urllib.parse
         nome_base = doc["title"].replace(".pdf", "")
 
         if body.com_imagens:
@@ -297,12 +298,14 @@ async def exportar_documento(
             pdf_bytes = sb.storage.from_("documents").download(doc["storage_path"])
             pdf_final = gerar_pdf_overlay(pdf_bytes, chunks)
 
+            nome_arquivo = f"{nome_base}_traduzido.pdf"
+            nome_arquivo_encoded = urllib.parse.quote(nome_arquivo)
+
             return Response(
                 content=pdf_final,
                 media_type="application/pdf",
                 headers={
-                    "Content-Disposition":
-                        f'attachment; filename="{nome_base}_traduzido.pdf"'
+                    "Content-Disposition": f"attachment; filename*=utf-8''{nome_arquivo_encoded}"
                 },
             )
         else:
@@ -310,12 +313,14 @@ async def exportar_documento(
             logger.info(f"[{documento_id}] Gerando Markdown...")
             md_bytes = gerar_markdown(chunks, nome_documento=nome_base)
 
+            nome_arquivo = f"{nome_base}_traduzido.md"
+            nome_arquivo_encoded = urllib.parse.quote(nome_arquivo)
+
             return Response(
                 content=md_bytes,
                 media_type="text/markdown; charset=utf-8",
                 headers={
-                    "Content-Disposition":
-                        f'attachment; filename="{nome_base}_traduzido.md"'
+                    "Content-Disposition": f"attachment; filename*=utf-8''{nome_arquivo_encoded}"
                 },
             )
     except Exception as exc:
