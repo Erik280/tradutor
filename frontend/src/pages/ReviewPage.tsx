@@ -7,6 +7,7 @@ import {
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import ExportModal from "@/components/ExportModal";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface Chunk {
   id: string;
@@ -194,6 +195,9 @@ export default function ReviewPage() {
             <BookOpen className="w-4 h-4" />
             <span className="hidden sm:inline">Glossário</span>
           </button>
+
+          <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
+          <ThemeToggle />
 
           <button
             id="btn-exportar"

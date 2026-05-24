@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/lib/api";
+import ThemeToggle from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 const SUPER_ADMIN_EMAIL = "eriklima.me@gmail.com";
@@ -168,9 +169,13 @@ export default function DashboardPage() {
 
           <span className="text-xs text-muted-foreground hidden sm:block">{userEmail}</span>
 
+          <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
+          
+          <ThemeToggle />
+
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors ml-2"
           >
             <LogOut className="w-4 h-4" />
             Sair
