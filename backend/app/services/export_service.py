@@ -144,8 +144,9 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
                 continue
 
             coord = chunk["coordenadas"]
-            font_size = chunk.get("font_size") or 10.0
-            font_size = max(6.0, min(font_size, 24.0))  # Clamp seguro
+            font_size_original = chunk.get("font_size") or 10.0
+            # Reduz em 2px o tamanho da fonte (ex: 14 -> 12, 12 -> 10) para compensar o PT-BR
+            font_size = max(6.0, min(font_size_original - 2.0, 24.0))
 
             ph = coord.get("page_height", page_height)
             x0 = coord["x0"]

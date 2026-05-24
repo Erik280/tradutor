@@ -242,6 +242,27 @@ async def run_translation_pipeline(
         }).eq("id", documento_id).execute()
 
         # ── Etapa B: Tradução ──────────────────────────────────────────────────
+        if model == "manual":
+            logger.info(f"[{documento_id}] Modo manual selecionado. Pulando LLM...")
+            sb.table("documents").update({"status": "translating"}).eq("id", documento_id).execute()
+
+            res_chunks = sb.table("chunks_traducao") \
+                .select("id, texto_original") \
+                .eq("documento_id", documento_id) \
+                .execute()
+
+            for c in (res_chunks.data or []):
+                sb.table("chunks_traducao").update({
+                    "texto_traduzido_ia":    c["texto_original"],
+                    "texto_final_revisado":  c["texto_original"],
+                    "status":                "traduzido",
+                    "model_used":            "manual",
+                }).eq("id", c["id"]).execute()
+
+            sb.table("documents").update({"status": "translated"}).eq("id", documento_id).execute()
+            logger.info(f"[{documento_id}] ✅ Extração manual concluída com sucesso!")
+            return
+
         logger.info(f"[{documento_id}] Carregando glossário da empresa {empresa_id}...")
         glossario = _carregar_glossario(empresa_id)
         glossario_str = _formatar_glossario_para_prompt(glossario)

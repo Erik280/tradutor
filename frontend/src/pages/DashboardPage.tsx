@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const [loading,     setLoading]     = useState(true);
   const [uploading,   setUploading]   = useState(false);
   const [dragOver,    setDragOver]    = useState(false);
+  const [modelSel,    setModelSel]    = useState("gpt-4o-mini");
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -114,7 +115,7 @@ export default function DashboardPage() {
     }
     setUploading(true);
     try {
-      await api.uploadDocumento(file);
+      await api.uploadDocumento(file, "de", "pt", modelSel);
       await carregarDocumentos();
     } catch (e: any) {
       alert(`Erro no upload: ${e.message}`);
@@ -178,6 +179,18 @@ export default function DashboardPage() {
       </nav>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
+        {/* ── Model Selection ── */}
+        <div className="flex justify-end mb-4">
+          <select
+            value={modelSel}
+            onChange={(e) => setModelSel(e.target.value)}
+            className="text-sm bg-card border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="gpt-4o-mini">Tradução Automática (GPT-4o Mini)</option>
+            <option value="manual">Extração Apenas (Tradução Manual)</option>
+          </select>
+        </div>
+
         {/* ── Upload Zone ── */}
         <div
           id="upload-zone"
