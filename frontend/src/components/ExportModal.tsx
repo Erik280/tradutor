@@ -12,16 +12,18 @@ interface Props {
 type Mode = "pdf" | "markdown";
 
 export default function ExportModal({ documentoId, nomeDocumento, onClose }: Props) {
-  const [mode,      setMode]      = useState<Mode>("pdf");
-  const [loading,   setLoading]   = useState(false);
-  const [done,      setDone]      = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
+  const [mode,           setMode]           = useState<Mode>("pdf");
+  const [quebraManual,   setQuebraManual]   = useState(false);
+  const [fontOffset,     setFontOffset]     = useState<number>(-2.0);
+  const [loading,        setLoading]        = useState(false);
+  const [done,           setDone]           = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
 
   async function handleExport() {
     setLoading(true);
     setError(null);
     try {
-      const blob = await api.exportarDocumento(documentoId, mode === "pdf");
+      const blob = await api.exportarDocumento(documentoId, mode === "pdf", quebraManual, fontOffset);
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href     = url;
@@ -147,6 +149,46 @@ export default function ExportModal({ documentoId, nomeDocumento, onClose }: Pro
             </div>
           </button>
         </div>
+
+        {/* Checkbox Quebra Manual e Ajuste de Fonte (Apenas para PDF) */}
+        {mode === "pdf" && (
+          <div className="mb-5 space-y-3">
+            <label className="flex items-start gap-3 p-3 border border-border rounded-xl cursor-pointer hover:bg-accent/50 transition-colors">
+              <input
+                type="checkbox"
+                checked={quebraManual}
+                onChange={(e) => setQuebraManual(e.target.checked)}
+                className="mt-0.5 rounded text-primary focus:ring-primary w-4 h-4"
+              />
+              <div>
+                <p className="text-sm font-medium text-foreground">Desativar quebra automática de linha</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Marque isto se um texto curto estiver quebrando a linha no PDF (ideal para rótulos curtos que têm espaço sobrando à direita). O PDF vai respeitar apenas os ENTERS que você deu.
+                </p>
+              </div>
+            </label>
+
+            <div className="flex items-center justify-between p-3 border border-border rounded-xl">
+              <div>
+                <p className="text-sm font-medium text-foreground">Ajuste Global de Fonte</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Recomendado -2 para compensar o tamanho do PT-BR.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setFontOffset((p) => p - 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded bg-accent text-foreground hover:brightness-95"
+                >-</button>
+                <span className="w-8 text-center text-sm font-mono">{fontOffset > 0 ? `+${fontOffset}` : fontOffset}px</span>
+                <button
+                  onClick={() => setFontOffset((p) => p + 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded bg-accent text-foreground hover:brightness-95"
+                >+</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Info box */}
         <div

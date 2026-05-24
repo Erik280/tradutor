@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Save, BookOpen, Check, ChevronLeft,
-  ChevronRight, Loader2, Plus, X,
+  ChevronRight, Loader2, Plus, X, Settings, ArrowUp, ArrowDown, ArrowRight,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,9 @@ interface Chunk {
   texto_final_revisado: string | null;
   block_type: string;
   status: string;
+  offset_x?: number;
+  offset_y?: number;
+  custom_font_size?: number | null;
 }
 
 interface AddTermState {
@@ -37,6 +40,10 @@ export default function ReviewPage() {
   const [saving,          setSaving]           = useState<string | null>(null);  // chunk id sendo salvo
   const [savedIds,        setSavedIds]         = useState<Set<string>>(new Set());
   const [editando,        setEditando]         = useState<Record<string, string>>({});
+  const [offsetsX,        setOffsetsX]         = useState<Record<string, number>>({});
+  const [offsetsY,        setOffsetsY]         = useState<Record<string, number>>({});
+  const [customFonts,     setCustomFonts]      = useState<Record<string, number | null>>({});
+  const [showLayout,      setShowLayout]       = useState<Record<string, boolean>>({});
   const [showExport,      setShowExport]       = useState(false);
   const [addTerm,         setAddTerm]          = useState<AddTermState>({ show: false, original: "", traducao: "" });
 
@@ -58,10 +65,19 @@ export default function ReviewPage() {
       setChunks(data);
       // Inicializar edição com texto revisado ou traduzido
       const edit: Record<string, string> = {};
+      const ox: Record<string, number> = {};
+      const oy: Record<string, number> = {};
+      const cf: Record<string, number | null> = {};
       for (const c of data) {
         edit[c.id] = c.texto_final_revisado ?? c.texto_traduzido_ia ?? "";
+        ox[c.id] = c.offset_x ?? 0;
+        oy[c.id] = c.offset_y ?? 0;
+        cf[c.id] = c.custom_font_size ?? null;
       }
       setEditando(edit);
+      setOffsetsX(ox);
+      setOffsetsY(oy);
+      setCustomFonts(cf);
     } catch (e) {
       console.error(e);
     } finally {
@@ -76,7 +92,14 @@ export default function ReviewPage() {
     if (!documentoId) return;
     setSaving(chunkId);
     try {
-      await api.salvarRevisao(documentoId, chunkId, editando[chunkId] ?? "");
+      await api.salvarRevisao(
+        documentoId, 
+        chunkId, 
+        editando[chunkId] ?? "",
+        offsetsX[chunkId] ?? 0,
+        offsetsY[chunkId] ?? 0,
+        customFonts[chunkId] ?? null
+      );
       setSavedIds((prev) => new Set(prev).add(chunkId));
       setTimeout(() => {
         setSavedIds((prev) => { const s = new Set(prev); s.delete(chunkId); return s; });
@@ -223,7 +246,10 @@ export default function ReviewPage() {
               {chunks.map((chunk) => {
                 const isSaving = saving === chunk.id;
                 const isSaved  = savedIds.has(chunk.id);
-                const isEdited = editando[chunk.id] !== (chunk.texto_final_revisado ?? chunk.texto_traduzido_ia ?? "");
+                const isEdited = editando[chunk.id] !== (chunk.texto_final_revisado ?? chunk.texto_traduzido_ia ?? "") ||
+                  offsetsX[chunk.id] !== (chunk.offset_x ?? 0) ||
+                  offsetsY[chunk.id] !== (chunk.offset_y ?? 0) ||
+                  customFonts[chunk.id] !== (chunk.custom_font_size ?? null);
 
                 return (
                   <div
@@ -245,7 +271,16 @@ export default function ReviewPage() {
                         )}
                       </span>
 
-                      <button
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowLayout(prev => ({ ...prev, [chunk.id]: !prev[chunk.id] }))}
+                          className="flex items-center justify-center p-1.5 rounded-lg text-muted-foreground hover:bg-accent transition-colors"
+                          title="Ajuste de Layout e Fonte"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
+                        
+                        <button
                         id={`btn-salvar-${chunk.id}`}
                         onClick={() => salvarChunk(chunk.id)}
                         disabled={isSaving || !isEdited}
@@ -269,6 +304,7 @@ export default function ReviewPage() {
                         {isSaved ? "Salvo!" : "Salvar"}
                       </button>
                     </div>
+                  </div>
 
                     <textarea
                       id={`textarea-chunk-${chunk.id}`}
@@ -284,6 +320,31 @@ export default function ReviewPage() {
                       )}
                       placeholder="Tradução ainda não disponível..."
                     />
+
+                    {showLayout[chunk.id] && (
+                      <div className="mt-4 pt-3 border-t border-border grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-xs text-muted-foreground font-semibold mb-2 block">Mover (Pixels)</span>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setOffsetsX(p => ({ ...p, [chunk.id]: (p[chunk.id] ?? 0) - 2 }))} className="p-1.5 bg-accent rounded hover:brightness-95"><ArrowLeft className="w-3 h-3" /></button>
+                            <button onClick={() => setOffsetsX(p => ({ ...p, [chunk.id]: (p[chunk.id] ?? 0) + 2 }))} className="p-1.5 bg-accent rounded hover:brightness-95"><ArrowRight className="w-3 h-3" /></button>
+                            <div className="w-2" />
+                            <button onClick={() => setOffsetsY(p => ({ ...p, [chunk.id]: (p[chunk.id] ?? 0) - 2 }))} className="p-1.5 bg-accent rounded hover:brightness-95"><ArrowUp className="w-3 h-3" /></button>
+                            <button onClick={() => setOffsetsY(p => ({ ...p, [chunk.id]: (p[chunk.id] ?? 0) + 2 }))} className="p-1.5 bg-accent rounded hover:brightness-95"><ArrowDown className="w-3 h-3" /></button>
+                            <span className="text-xs font-mono ml-2 text-muted-foreground">X:{offsetsX[chunk.id]??0} Y:{offsetsY[chunk.id]??0}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground font-semibold mb-2 block">Tamanho da Fonte (px)</span>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setCustomFonts(p => ({ ...p, [chunk.id]: Math.max(4, (p[chunk.id] || 10) - 1) }))} className="p-1.5 bg-accent rounded hover:brightness-95">-</button>
+                            <span className="text-xs font-mono w-6 text-center">{customFonts[chunk.id] ? customFonts[chunk.id] : "Auto"}</span>
+                            <button onClick={() => setCustomFonts(p => ({ ...p, [chunk.id]: Math.min(48, (p[chunk.id] || 10) + 1) }))} className="p-1.5 bg-accent rounded hover:brightness-95">+</button>
+                            <button onClick={() => setCustomFonts(p => ({ ...p, [chunk.id]: null }))} className="text-xs text-primary hover:underline ml-2">Resetar</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

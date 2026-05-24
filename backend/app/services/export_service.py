@@ -23,11 +23,12 @@ logger = logging.getLogger(__name__)
 
 # ─── MODO 1: PDF com Overlay ──────────────────────────────────────────────────
 
-def _draw_text_wrapped(page, rect, text, fontname, original_fontsize, color):
+def _draw_text_wrapped(page, rect, text, fontname, original_fontsize, color, quebra_linha_manual=False):
     """
     Desenha o texto com quebra de linha manual.
     Encolhe automaticamente a fonte (até um limite) se o texto quebrado
     não couber na altura do retângulo, evitando invasão de bordas (como em tabelas).
+    Se quebra_linha_manual for True, ignora a largura e nunca quebra a linha automaticamente.
     """
     fontsize = original_fontsize
     min_fontsize = 6.0
@@ -48,7 +49,9 @@ def _draw_text_wrapped(page, rect, text, fontname, original_fontsize, color):
             for word in words:
                 test_line = " ".join(current_line + [word])
                 w = fitz.get_text_length(test_line, fontname=fontname, fontsize=fontsize)
-                if w > rect.width:
+                
+                # Se for quebra manual, nunca transborda a largura (nunca auto-quebra)
+                if w > rect.width and not quebra_linha_manual:
                     if not current_line:
                         # Palavra muito grande
                         overflows_width = True
@@ -86,7 +89,7 @@ def _draw_text_wrapped(page, rect, text, fontname, original_fontsize, color):
             for word in words:
                 test_line = " ".join(current_line + [word])
                 w = fitz.get_text_length(test_line, fontname=fontname, fontsize=fontsize)
-                if w > rect.width and current_line:
+                if w > rect.width and current_line and not quebra_linha_manual:
                     lines_to_draw.append(" ".join(current_line))
                     current_line = [word]
                 else:
@@ -102,14 +105,14 @@ def _draw_text_wrapped(page, rect, text, fontname, original_fontsize, color):
         y += fontsize * 1.2
 
 
-def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
+def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict], quebra_linha_manual: bool = False, font_offset: float = -2.0) -> bytes:
     """
     Recebe o PDF original em bytes e a lista de chunks já traduzidos.
     Retorna o PDF final com o texto traduzido injetado nas coordenadas originais.
 
     Args:
         pdf_bytes: bytes do PDF original
-        chunks: lista de dicts com {numero_pagina, coordenadas, texto_final_revisado, font_size}
+        chunks: lista de dicts com {numero_pagina, coordenadas, texto_final_revisado, font_size, offset_x, offset_y, custom_font_size}
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
@@ -123,9 +126,7 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
         page = doc[page_num - 1]  # PyMuPDF usa índice 0-based
         page_height = page.rect.height
 
-        # PASS 1: Desenhar todos os retângulos brancos primeiro.
-        # Isso impede que o retângulo de um bloco sobreponha o texto traduzido
-        # de um bloco superior que precisou de mais linhas (wrap).
+        # PASS 1: Desenhar todos os retângulos brancos primeiro (mantém coordenadas originais para cobrir o texto).
         for chunk in page_chunks:
             coord = chunk["coordenadas"]
             ph = coord.get("page_height", page_height)
@@ -137,49 +138,60 @@ def gerar_pdf_overlay(pdf_bytes: bytes, chunks: List[dict]) -> bytes:
             rect = fitz.Rect(x0, y0_tl, x1, y1_tl)
             page.draw_rect(rect, color=(1, 1, 1), fill=(1, 1, 1))
 
-        # PASS 2: Injetar os textos traduzidos
+        # PASS 2: Injetar os textos traduzidos com offsets
         for chunk in page_chunks:
             texto = chunk.get("texto_final_revisado") or chunk.get("texto_traduzido_ia", "")
             if not texto:
                 continue
 
             coord = chunk["coordenadas"]
+            
+            # Fonte: usa a custom_font_size se existir, senão usa original + font_offset global
             font_size_original = chunk.get("font_size") or 10.0
-            # Reduz em 2px o tamanho da fonte (ex: 14 -> 12, 12 -> 10) para compensar o PT-BR
-            font_size = max(6.0, min(font_size_original - 2.0, 24.0))
+            custom_font = chunk.get("custom_font_size")
+            if custom_font is not None:
+                font_size = max(4.0, min(custom_font, 48.0))
+            else:
+                font_size = max(6.0, min(font_size_original + font_offset, 24.0))
+
+            # Offsets manuais de posição
+            ox = chunk.get("offset_x") or 0.0
+            oy = chunk.get("offset_y") or 0.0
 
             ph = coord.get("page_height", page_height)
-            x0 = coord["x0"]
-            y0_tl = ph - coord["y1"]
-            x1 = coord["x1"]
-            y1_tl = ph - coord["y0"]
+            x0 = coord["x0"] + ox
+            y0_tl = ph - coord["y1"] + oy
+            x1 = coord["x1"] + ox
+            y1_tl = ph - coord["y0"] + oy
+            
+            # Garantir que o x1 seja pelo menos maior que x0, mesmo após deslocamento
+            if x1 <= x0: x1 = x0 + 10.0
             rect = fitz.Rect(x0, y0_tl, x1, y1_tl)
 
-            # PyMuPDF Base-14 fonts (like Helvetica) only support Latin-1.
-            # We must sanitize common Unicode typography to ASCII.
             texto_seguro = texto.replace("\u2013", "-").replace("\u2014", "--")
             texto_seguro = texto_seguro.replace("\u2018", "'").replace("\u2019", "'")
             texto_seguro = texto_seguro.replace("\u201c", '"').replace("\u201d", '"')
             texto_seguro = texto_seguro.replace("\u2026", "...")
-            # Sanitizar marcadores de lista
             texto_seguro = texto_seguro.replace("•", "-").replace("·", "-").replace("■", "-").replace("▪", "-").replace("►", "-")
             texto_seguro = texto_seguro.encode("latin-1", errors="replace").decode("latin-1")
 
             try:
-                rc = page.insert_textbox(
-                    rect,
-                    texto_seguro,
-                    fontsize=font_size,
-                    fontname="helv",
-                    color=(0, 0, 0),
-                    align=fitz.TEXT_ALIGN_LEFT,
-                )
-                if rc < 0:
-                    # Texto não coube (muito longo ou box muito apertado).
-                    _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0))
+                if quebra_linha_manual:
+                    _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0), quebra_linha_manual=True)
+                else:
+                    rc = page.insert_textbox(
+                        rect,
+                        texto_seguro,
+                        fontsize=font_size,
+                        fontname="helv",
+                        color=(0, 0, 0),
+                        align=fitz.TEXT_ALIGN_LEFT,
+                    )
+                    if rc < 0:
+                        _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0), False)
             except Exception as e:
                 logger.warning(f"Falha ao inserir texto na página {page_num}: {e}")
-                _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0))
+                _draw_text_wrapped(page, rect, texto_seguro, "helv", font_size, (0, 0, 0), False)
 
     # Serializar para bytes com compressão
     output = io.BytesIO()

@@ -80,10 +80,16 @@ class ChunkOut(BaseModel):
     block_type:           str = "text"
     status:               ChunkStatus
     versao:               int = 1
+    offset_x:             float = 0.0
+    offset_y:             float = 0.0
+    custom_font_size:     Optional[float] = None
 
 class ChunkRevisaoUpdate(BaseModel):
     texto_final_revisado: str
     status:               ChunkStatus = ChunkStatus.revisado
+    offset_x:             float = 0.0
+    offset_y:             float = 0.0
+    custom_font_size:     Optional[float] = None
 
 
 # ─── Documento ───────────────────────────────────────────────────────────────
@@ -112,6 +118,8 @@ class DocumentoCreate(BaseModel):
 class ExportRequest(BaseModel):
     com_imagens:  bool = True     # True=PDF overlay | False=Markdown
     versao:       Optional[int] = None  # None = versão atual
+    quebra_linha_manual: bool = False
+    font_offset:  float = -2.0
 
 
 # ─── Respostas Genéricas ─────────────────────────────────────────────────────

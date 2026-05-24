@@ -250,6 +250,9 @@ async def revisar_chunk(
     res = sb.table("chunks_traducao").update({
         "texto_final_revisado": body.texto_final_revisado,
         "status":               body.status.value,
+        "offset_x":             body.offset_x,
+        "offset_y":             body.offset_y,
+        "custom_font_size":     body.custom_font_size,
     }).eq("id", chunk_id).eq("documento_id", documento_id).execute()
 
     if not res.data:
@@ -296,7 +299,12 @@ async def exportar_documento(
             # ── Modo: PDF Overlay ──────────────────────────────────────────────────
             logger.info(f"[{documento_id}] Gerando PDF overlay...")
             pdf_bytes = sb.storage.from_("documents").download(doc["storage_path"])
-            pdf_final = gerar_pdf_overlay(pdf_bytes, chunks)
+            pdf_final = gerar_pdf_overlay(
+                pdf_bytes, 
+                chunks, 
+                quebra_linha_manual=body.quebra_linha_manual,
+                font_offset=body.font_offset
+            )
 
             nome_arquivo = f"{nome_base}_traduzido.pdf"
             nome_arquivo_encoded = urllib.parse.quote(nome_arquivo)

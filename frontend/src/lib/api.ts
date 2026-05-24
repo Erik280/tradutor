@@ -52,26 +52,32 @@ export const api = {
     return res.json();
   },
 
-  async salvarRevisao(documentoId: string, chunkId: string, texto: string) {
+  async salvarRevisao(documentoId: string, chunkId: string, texto: string, offsetX: number = 0, offsetY: number = 0, customFontSize: number | null = null) {
     const headers = await getAuthHeaders();
     const res = await fetch(
       `${API_BASE}/documentos/${documentoId}/chunks/${chunkId}`,
       {
         method: "PATCH",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ texto_final_revisado: texto, status: "revisado" }),
+        body: JSON.stringify({ 
+          texto_final_revisado: texto, 
+          status: "revisado",
+          offset_x: offsetX,
+          offset_y: offsetY,
+          custom_font_size: customFontSize
+        }),
       }
     );
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 
-  async exportarDocumento(documentoId: string, comImagens: boolean): Promise<Blob> {
+  async exportarDocumento(documentoId: string, comImagens: boolean, quebraLinhaManual: boolean = false, fontOffset: number = -2.0): Promise<Blob> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE}/documentos/${documentoId}/exportar`, {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ com_imagens: comImagens }),
+      body: JSON.stringify({ com_imagens: comImagens, quebra_linha_manual: quebraLinhaManual, font_offset: fontOffset }),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.blob();
